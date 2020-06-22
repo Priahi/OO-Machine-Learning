@@ -4,6 +4,7 @@ import pandas as pd
 
 np.set_printoptions(precision=2)  # number of decimal places
 
+
 class RegOrClassDataset:
     def __init__(self, filename,
                  x_start=0,
@@ -21,7 +22,11 @@ class RegOrClassDataset:
                  degree=1,
                  ml_type='regression',
                  regressor='linear',
-                 classifier='logistic'):
+                 classifier='logistic',
+                 dimreduction=False,
+                 reducer='pca',
+                 n_dims=2,
+                 kernel='rbf'):
         if onehotcols is None:
             onehotcols = [0]
         dataset = pd.read_csv(filename)
@@ -34,6 +39,7 @@ class RegOrClassDataset:
         self.y_pred = None
         self.x_offset = 0
         self.graph = graph
+        self.kernel = kernel
 
         self.poly = poly
         self.degree = degree
@@ -60,12 +66,22 @@ class RegOrClassDataset:
         elif label:
             self._labelEncode()
 
+        if dimreduction:
+            dim = DimReducer()
+            self.dimreducer = dim.getDimReducer(dimreducer=reducer, kernel=self.kernel, n_components=n_dims)
+            if reducer == 'lda':
+                self._fit_lda()
+            else:
+                self._fit_pca()
+            if n_dims <= 2:
+                self.graph = True
+
         if ml_type == 'regression':
             reg = Regressor()
-            self.trainer = reg.getReg(regressor=regressor)
+            self.trainer = reg.getReg(regressor=regressor, kernel=self.kernel)
         elif ml_type == 'classifier':
             cls = Classifier()
-            self.trainer = cls.getClassifier(classifier=classifier)
+            self.trainer = cls.getClassifier(classifier=classifier, kernel=self.kernel)
         self._fit()
         self.y_pred = self._getFullPrediction(self.X_test)
 
@@ -118,21 +134,34 @@ class RegOrClassDataset:
         else:
             self.trainer.fit(self.X_train, self.y_train)
 
-        # must be coded as onehot in advance
+    def _fit_lda(self):
+        self.dimreducer.fit_transform(self.X_train, self.y_train)
+        self._dim_reduce_transform()
 
-    def getSinglePrediction(self, argArray):  # args is a 1d array of features
+    def _fit_pca(self):
+        self.dimreducer.fit_transform(self.X_train)
+        self._dim_reduce_transform()
+
+    def _dim_reduce_transform(self):
+        self.dimreducer.transform(self.X_test)
+
+    def getSinglePrediction(self, argArray):  # argArray is a 1d array of features
+        # must be coded as onehot in advance
         args = [argArray]
         if self.poly:
             args = self.poly_reg.fit_transform(args)
-        return self._getFullPrediction(args)
+            if self.x_sc & self.y_sc:
+                # scale_X input, then inv_scale_y the predicted output
+                return self.yscalar.inverse_transform(self.trainer.predict(self.xscalar.transform(args)))
+            elif self.x_sc:
+                return self.trainer.predict(self.xscalar.transform(args))
+            elif self.y_sc:
+                return self.yscalar.inverse_transform(self.trainer.predict(args))
+            else:
+                return self.trainer.predict(args)
 
     def _getFullPrediction(self, X):
-        if self.x_sc & self.y_sc:
-            # scale_X input, then inv_scale_y the predicted output
-            return self.yscalar.inverse_transform(self.trainer.predict(self.xscalar.transform(X)))
-        elif self.x_sc:
-            return self.trainer.predict(self.xscalar.transform(X))
-        elif self.y_sc:
+        if self.y_sc:
             return self.yscalar.inverse_transform(self.trainer.predict(X))
         else:
             return self.trainer.predict(X)
@@ -210,6 +239,28 @@ class RegOrClassDataset:
         print(np.concatenate((self.y_pred.reshape(len(self.y_pred), 1),
                               self.y_test.reshape(len(self.y_test), 1)), 1))
 
+    def k_folds_cross(self, cv=10):
+        from sklearn.model_selection import cross_val_score
+        accuracies = cross_val_score(estimator=self.trainer,
+                                     X=self.X_train,
+                                     y=self.y_train,
+                                     cv=cv)  # 10 different folds
+        print("Accuracy: {:.2f} %".format(accuracies.mean() * 100))
+        print("Standard Deviation: {:.2f}".format(accuracies.std() * 100))
+
+    def grid_search_cv(self, cv=10, parameters=None):
+        from sklearn.model_selection import GridSearchCV
+        #               regularization param values to test
+        if parameters is None:
+            parameters = [{'C': [0.25, 0.5, 0.75, 1], 'kernel': ['linear']},
+                          {'C': [0.25, 0.5, 0.75, 1], 'kernel': [self.kernel], 'gamma': [.1, .2, .3, .4, .5, .6, .7, .8, .9]}]
+        grid_search = GridSearchCV(estimator=self.trainer, param_grid=parameters, scoring='accuracy', cv=cv, n_jobs=-1)
+        grid_search.fit(X=self.X_train, y=self.y_train)
+        best_acc = grid_search.best_score_
+        best_param = grid_search.best_params_
+        print("Best Accuracy: {:.2f} %".format(best_acc.mean() * 100))
+        print("Best Params: ", best_param)
+
 
 class Regressor:
     def __init__(self):
@@ -243,6 +294,10 @@ class Regressor:
         regressor = RandomForestRegressor(n_estimators=self.n_estimators, random_state=0)
         return regressor
 
+    # def _xgb(self):
+    #     from xgboost import XGBRegressor
+    #     regressor = XGBRegressor()
+    #     return regressor
 
 class Classifier:
     def __init__(self):
@@ -287,3 +342,36 @@ class Classifier:
         from sklearn.ensemble import RandomForestClassifier
         classifier = RandomForestClassifier(n_estimators=self.n_estimators, random_state=0, criterion=self.criterion)
         return classifier
+
+    # def _xgb(self):
+    #     from xgboost import XGBClassifier
+    #     classifier = XGBClassifier()
+    #     return classifier
+
+
+class DimReducer:
+    def __init__(self):
+        self.n_components = None
+        self.kernel = None
+
+    def getDimReducer(self, dimreducer='pca', kernel='rbf', n_components=2):
+        self.n_components = n_components
+        self.kernel = kernel
+        method_name = "_" + dimreducer
+        method = getattr(self, method_name, lambda: "Invalid Classifier")
+        return method()
+
+    def _pca(self):
+        from sklearn.decomposition import PCA
+        pca = PCA(n_components=self.n_components)
+        return pca
+
+    def _lda(self):
+        from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+        lda = LDA(n_components=self.n_components)
+        return lda
+
+    def _kernel_pca(self):
+        from sklearn.decomposition import KernelPCA
+        kpca = KernelPCA(n_components=self.n_components, kernel=self.kernel)
+        return kpca

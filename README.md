@@ -318,15 +318,45 @@ __ROC (Receiver Operating Characteristic)__ is not the same as CAP
 # Dimensionality Reduction
 
 ## Principal Component Analysis (PCA)
+ dimensionality reduction algorithm by detecting correlation between vars.
+ 
+    (sort the eigenvalue of covariance matrix in descending order, choose top k)
+    create projection matrix W from k eigenvectors, transfer X via W to get
+    k-dimensional feature subspace Y
+* highly affected by data outliers
+* unsupervised algorithm
+* if 2 final components, then graphable
+* do not fit X-test in order to avoid info leakage
+
+https://setosa.io/ev/principal-component-analysis/
 
 ## Linear Discriminant Analysis (LDA)
+ dimensionality reduction algorithm by detecting correlation between vars.
+ 
+LDA differs from PCA by trying to maximize the separation between multiple classes (adjusting component axis)
+* LDA is supervise due to relation to dependant variable
+    * (uses scatter matrices -- in-between-class and within-class)
+    * sorts eigen-vectors and similar steps to PCA
 
 ## Kernel PCA
-
+Similar to PCA, but uses the kernels defined previously to assess correlations between features
 
 # Model Selection: Boosting
 
-## Model Selection
+## K-fold Cross Validation
+creates multiple test folds to avoid any outlying data weighing results
+* __cv__: if an integer, then specify the number of folds in a `(Stratified)KFold`,
+    * `CV splitter`, - An iterable yielding (train, test) splits as arrays of indices
 
+## Grid Search
+test and find the best of many params all at once
+* different C values, kernels, gammas
+* own regularization parameters can be entered as sets inside array with arrays of desired values to test as seen here
+
+       '[{'C': [0.25, 0.5, 0.75, 1],
+        'kernel': ['rbf'],
+        'gamma': [.1, .2, .3, .4, .5, .6, .7, .8, .9]}, ...]
 ## XGBoost
-
+an estimator object (regression or classification) which can run many tests in parallel and return optimal model
+* may be difficult to import library, thus the code is currently commented out
+* otherwise acts like any other regressor or classifier from a high level perspective
