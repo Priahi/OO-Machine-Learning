@@ -12,15 +12,18 @@
 * 1 hot encode so no relation between strs
 * do not scale these features afterwards
 ### Column Transformer: for X
+_sklearn.compose.ColumnTransformer_
 * transform type = _'encoder'_
 * encoding class = _OneHotEncoder()_
 * col index = _[i]_
 * remainder = _'passthrough'_
 * transformers = [(transform type, encoding class, col index)]
 ### Label encoder: for y
+_sklearn.preprocessing.LabelEncoder_
 * no/yes -> 0/1
 
 ## Split into Train and Test sets
+_sklearn.model_selection.train_test_split_
 * test_size = E[0, 1], usually ~0.2
 * random_state = constant -> same split each time
 
@@ -33,6 +36,7 @@
 * X_test: Don't fit-> fresh data-> use training set scalar on test set
 
 ## Standardization
+_sklearn.preprocessing.StandardScaler_
 * (x - mean(x) )/ SD(x) 
 * E [-3,3] since percentiles around mean
 * works all the time, best choice
@@ -94,6 +98,8 @@ Works on any size of dataset, works very well on non linear problems | Need to c
 
 linear refers to the linear independence of the variable matrix
 
+_sklearn.preprocessing.PolynomialFeatures_
+
 transforms vector into degree n matrix to get poly regression, use only on single feature sets
 ## Support Vector (SVR)
 Pros | Cons
@@ -104,8 +110,12 @@ Easily adaptable, works very well on non linear problems, not biased by outliers
     are taken from the edge of the tube around the trend-line. ( sum of minimum squares on this tube to get best trend-line.
     The points outside the tube are the SVs, defining the shape of the E-I tube. The ones above are Ei*, and the ones below are Ei.
 
-kernel = 'rbf', # radial basis function kernel (function measuring euclidian distances radially around some center, as a basis)
-    used for SVR typically, (does not catch outliers well, but is better for polynomial trends than linear kernel)
+kernel = 'rbf', # __Radial Basis Function Kernel__ 
+* (function measuring euclidian distances radially around some center, as a basis)
+* used for SVR typically, (does not catch outliers well, but is better for polynomial trends than linear kernel)
+* points are considered proportional to the inverse exponential euclidean distance from the center, scaled by the inverse exponential variance
+    * thus we can get a circumference as a cutoff hyperplane. (variance can be changed here)
+* we can also add different RBF equations for more complex mapping
 
 Non Linear SVM = using RBF kernel to shift the nD plane to higher dimensionality ((n+1)D), we can cast a hyperplane
 onto the shape, with a top and bottom hyperplane at distance epsilon away in which we negate error.
@@ -156,3 +166,160 @@ use hyper-tuning parameters to add factors to minimized errors
 * Ridge Regression: adding the factor lambda*(SSmodel_coefficients)
 * Lasso: adding the factor lambda*(Sum(abs(model_coefficients))
 * Elastic Net: use both Ridge and Lasso with different lambdas, reducing over-fitting
+
+
+# Classification
+
+## Logistic Regression
+classifying into groups, ie yes and no, or cat vs dog, as a probability
+
+Intuition: 
+
+    we can thus apply a sigmoid function to the output, 
+    and the n invert to get the input sigmoid (probability)
+    then we project y^ to the closest classification (if y<0.5 y ->0)
+
+classification boundary is linear due to logistic regression being linear
+
+* __C__: Inverse of regularization strength; must be a positive float.
+        Like in support vector machines, smaller values specify stronger
+         regularization, counters over-fitting
+     * can be as high as 1e5 if not worried about overfitting
+
+
+## K nearest Neighbors
+* _nonlinear_
+* metric = _'minkowski'_ for distance metric to use for the tree. 
+    * with _p=2_ is equivalent to the standard Euclidean metric
+* n_neighbors = _5_ neighbors by default
+
+Intuition: 
+    
+    Choose number of K neighbors (ie 5),
+    take the K nearest neighbors of the new data point, by Euclidean distance.
+    Count the classifications of these neighbors,
+    assign data point to the closest group
+    
+        
+## Support Vector Machine (SVM)
+* _assume kernel is separable_
+ Intuition: 
+ 
+    finding best decision boundary,
+        which has a Maximum margin between the closest points to the boundary
+            (like the tube around the trendline), 
+        we want the max distance between these closest points
+    
+__Maximum Margin Hyperplane__:
+    maximum margin classifier line in nD, splits positive and negative hyperplane
+    
+## Kernel SVM
+how to choose the right classification method
+* sometimes linearly inseparable sets in nD are linearly separable in higher dimensions
+    * (as lines, planes, or hyperplanes)
+    * ie x->(x-5)^2
+    
+Types of Kernel Functions: __linear, rbf, poly, sigmoid__
+
+Non Linear SVM: using RBF kernel
+* shifts the nD plane to higher dimensionality ((n+1)D)
+* then we can cast a hyperplane onto the shape,
+    * with a top and bottom hyperplane at distance epsilon away in which we negate error.
+
+## Naive Bayes
+Intuition: 
+    
+    Posterior Probability: probability of y given X, P(y|X) = P(X|y) * P(y) / P(X)
+    P(y) = prior probability = number in classification y / total classified
+    P(X) = marginal likelihood = # similar Observations / Total observations, is the same for y and !y, can be factored out
+    P(X|y) = Likelihood = # similar observations among classification y / Total classified as y
+Naive since it has independence assumptions of features, otherwise it will over-correlate to much
+* I.e. feature1 = 1 - all other features
+
+* __priors__: _None_ so that there is no probability of one class over another predefined
+* __var_smoothing__: Portion of the largest variance of all features that is added to 
+                variances for calculation stability
+## Decision Tree 
+Intuition: 
+
+    CART = Classification And Regression Trees
+    The rest is the same as Regression Decision Tree
+* __Criterion__:  The function to measure the quality of a split. Supported criteria are
+    * _"gini"_ for the Gini impurity
+    * _"entropy"_ for the information gain.
+
+## Random Forest
+Intuition: 
+
+    The basic intuition is the same as Regression Random Forest
+
+## Checking Correctness
+__False Positives and Negatives__: easy with sigmoid around center
+
+__Confusion Matrix__: determining the occurance of falses: 
+
+    [[#neg , #falsePos],[#falseneg, #Pos]]
+
+__Accuracy rate__: correct / total, __Error rate__ = 1 - accuracy rate
+
+__Accuracy Paradox__: if y occurs much more than !y, then we can get a better model by always choosing y,
+                  which defeats the purpose of  having a model
+
+__CAP (Cumulative Accuracy Profile) Curve__: using specific demographics as the initial set of features to boost
+performance, there is a peak operating point where the slope of the model is maximized (total performance/sample size)
+Peak performance would be to include only those who choose y and nothing otherwise.
+
+__CAP Analysis__: Random Model Line (__R__), Perfect Model Line (__P__), and Good model line (__G__) in between.
+
+__Accuracy ratio__ = check ratio of R/P at 50% sample size,
+* if output is less than 60%, then bad model, after which it improves diminishingly.
+* If near 90-100%, then likely over-fitting
+
+__ROC (Receiver Operating Characteristic)__ is not the same as CAP
+# Clustering
+
+## K-means Clustering
+
+## Hierarchical Clustering
+
+
+# Associative Rule Learning
+
+## Apriori
+
+## Eclat
+
+
+# Reinforcement Learning
+
+## Upper Confidence Bound (UCB)
+
+## Thompson Sampling
+
+
+# Natural Language Processing
+
+
+# Deep Learning
+
+## Artificial Neural Networks (ANN)
+
+## Convolutional Neural Networks (CNN)
+
+## Recurrent Neural Networks (RNN)
+
+
+# Dimensionality Reduction
+
+## Principal Component Analysis (PCA)
+
+## Linear Discriminant Analysis (LDA)
+
+## Kernel PCA
+
+
+# Model Selection: Boosting
+
+## Model Selection
+
+## XGBoost

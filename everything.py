@@ -19,7 +19,9 @@ class Dataset:
                  graph=False,
                  poly=False,
                  degree=1,
-                 regressor='linear'):
+                 ml_type='regression',
+                 regressor='linear',
+                 classifier='logistic'):
         dataset = pd.read_csv(filename)
         self.X = dataset.iloc[:, x_start:y_start].values
         self.y = dataset.iloc[:, y_start].values
@@ -57,8 +59,12 @@ class Dataset:
         elif label:
             self.labelEncode()
 
-        reg = Regressor()
-        self.regressor = reg.getReg(regressor=regressor)
+        if ml_type == 'regression':
+            reg = Regressor()
+            self.trainer = reg.getReg(regressor=regressor)
+        elif ml_type == 'classifier':
+            cls = Classifier()
+            self.trainer = cls.getClassifier(classifier=classifier)
         self.fit()
         self.y_pred = self.getFullPrediction(self.X_test)
 
@@ -101,9 +107,9 @@ class Dataset:
 
     def fit(self):
         if self.poly:
-            self.regressor.fit(self.X_poly, self.y_train)
+            self.trainer.fit(self.X_poly, self.y_train)
         else:
-            self.regressor.fit(self.X_train, self.y_train)
+            self.trainer.fit(self.X_train, self.y_train)
 
         # must be coded as onehot in advance
     def getSinglePrediction(self, argArray):  # args is a 1d array of features
@@ -112,24 +118,24 @@ class Dataset:
             args = self.poly_reg.fit_transform(args)
         if self.x_sc & self.y_sc:
             # scale_X input, then inv_scale_y the predicted output
-            return self.yscalar.inverse_transform(self.regressor.predict(self.xscalar.transform(args)))
+            return self.yscalar.inverse_transform(self.trainer.predict(self.xscalar.transform(args)))
         elif self.x_sc:
-            return self.regressor.predict(self.xscalar.transform(args))
+            return self.trainer.predict(self.xscalar.transform(args))
         elif self.y_sc:
-            return self.yscalar.inverse_transform(self.regressor.predict(args))
+            return self.yscalar.inverse_transform(self.trainer.predict(args))
         else:
-            return self.regressor.predict(args)
+            return self.trainer.predict(args)
 
     def getFullPrediction(self, X):
         if self.x_sc & self.y_sc:
             # scale_X input, then inv_scale_y the predicted output
-            return self.yscalar.inverse_transform(self.regressor.predict(self.xscalar.transform(X)))
+            return self.yscalar.inverse_transform(self.trainer.predict(self.xscalar.transform(X)))
         elif self.x_sc:
-            return self.regressor.predict(self.xscalar.transform(X))
+            return self.trainer.predict(self.xscalar.transform(X))
         elif self.y_sc:
-            return self.yscalar.inverse_transform(self.regressor.predict(X))
+            return self.yscalar.inverse_transform(self.trainer.predict(X))
         else:
-            return self.regressor.predict(X)
+            return self.trainer.predict(X)
 
     def plotReg(self, X, y, highres=False, title='Regression Model', xlabel='feature', ylabel='output'):
         if self.graph:
@@ -171,12 +177,26 @@ class Dataset:
         from sklearn.metrics import r2_score
         return r2_score(self.y_test, self.y_pred)
 
+    def confusionMatrix(self):
+        from sklearn.metrics import confusion_matrix, accuracy_score
+        cm = confusion_matrix(self.y_test, self.y_pred)
+        # print(cm)  # [[#neg , #falsePos],[#falseneg, #Pos]]
+        acc = accuracy_score(self.y_test, self.y_pred)
+        # print(acc)
+        return cm, acc
+
+    def printComparedOutputs(self):
+        print(np.concatenate((self.y_pred.reshape(len(self.y_pred), 1),
+                              self.y_test.reshape(len(self.y_test), 1)), 1))
+
 
 class Regressor:
-    def __init__(self, graph=False):
-        self.graph = graph
+    def __init__(self):
+        pass
 
-    def getReg(self, regressor='linear'):
+    def getReg(self, regressor='linear',  kernel='rbf', n_estimators=10):
+        self.kernel = kernel
+        self.n_estimators = n_estimators
         method = getattr(self, regressor, lambda: "Invalid Regressor")
         return method()
 
@@ -187,7 +207,7 @@ class Regressor:
 
     def svr(self):
         from sklearn.svm import SVR
-        regressor = SVR(kernel='rbf')
+        regressor = SVR(kernel=self.kernel)
         return regressor
 
     def dec_tree(self):
@@ -195,7 +215,49 @@ class Regressor:
         regressor = DecisionTreeRegressor(random_state=0)
         return regressor
 
-    def rand_tree(self):
+    def rand_forest(self):
         from sklearn.ensemble import RandomForestRegressor
-        regressor = RandomForestRegressor(n_estimators=10, random_state=0)
+        regressor = RandomForestRegressor(n_estimators=self.n_estimators, random_state=0)
         return regressor
+
+class Classifier:
+    def __init__(self):
+        pass
+
+    def getClassifier(self, classifier='logistic', kernel='rbf', criterion='entropy', n_estimators=10):
+        self.kernel = kernel
+        self.criterion = criterion
+        self.n_estimators = n_estimators
+        method = getattr(self, classifier, lambda: "Invalid Classifier")
+        return method()
+
+    def logistic(self):
+        from sklearn.linear_model import LogisticRegression
+        classifier = LogisticRegression(random_state=0, C=1)
+        return classifier
+
+    def knn(self):
+        from sklearn.neighbors import KNeighborsClassifier
+        classifier = KNeighborsClassifier(n_neighbors=5, metric="minkowski", p=2)
+        return classifier
+
+    def svm(self):
+        from sklearn.svm import SVC
+        classifier = SVC(kernel=self.kernel, random_state=0)
+        return classifier
+
+    def bayes(self):
+        from sklearn.naive_bayes import GaussianNB
+        classifier = GaussianNB(priors=None, var_smoothing=1e-9)
+        return classifier
+
+    def dec_tree(self):
+        from sklearn.tree import DecisionTreeClassifier
+        classifier = DecisionTreeClassifier(random_state=0, criterion=self.criterion)
+        return classifier
+
+    def rand_forest(self):
+        from sklearn.ensemble import RandomForestClassifier
+        classifier = RandomForestClassifier(n_estimators=self.n_estimators, random_state=0, criterion=self.criterion)
+        return classifier
+
