@@ -1,3 +1,7 @@
+# Object Oriented Machine Learning in Python
+an amalgamation of all my machine learning training and OO Python to demonstrate functionality
+
+
 # Data Preprocessing:
 ## Importing dataset:
 * choose all cols but outputs for X, rest is y
@@ -166,6 +170,7 @@ use hyper-tuning parameters to add factors to minimized errors
 * Ridge Regression: adding the factor lambda*(SSmodel_coefficients)
 * Lasso: adding the factor lambda*(Sum(abs(model_coefficients))
 * Elastic Net: use both Ridge and Lasso with different lambdas, reducing over-fitting
+<<<<<<< HEAD
 
 
 # Classification
@@ -323,3 +328,5 @@ __ROC (Receiver Operating Characteristic)__ is not the same as CAP
 ## Model Selection
 
 ## XGBoost
+=======
+>>>>>>> fb59a3a750f877ced153729e11c39906fffc93db
