@@ -5,7 +5,7 @@ import pandas as pd
 np.set_printoptions(precision=2)  # number of decimal places
 
 
-class Dataset:
+class RegOrClassDataset:
     def __init__(self, filename,
                  x_start=0,
                  y_start=-1,
@@ -142,8 +142,7 @@ class Dataset:
             plt.title(title)
             plt.xlabel(xlabel)
             plt.ylabel(ylabel)
-            X_base = self.shapeInputX(X)
-            y_base = self.shapeInputy(y)
+            X_base, y_base = self.shapeInputX(X), self.shapeInputy(y)
             plt.scatter(X_base, y_base, color='red')
             if highres:
                 X_grid = np.arange(min(X_base), max(X_base), 0.01)  # higher resolution and smoother curve
@@ -172,6 +171,26 @@ class Dataset:
         if self.y_sc:
             y = self.xscalar.inverse_transform(y)
         return y
+
+    def plotCls(self, X, y, f1_index=0, f1_margin=10, f1_step=1, f2_index=1, f2_margin=10, f2_step=1,
+                title='Classification Model', xlabel='feature 1', ylabel='feature 2'):
+        if self.graph:
+            from matplotlib.colors import ListedColormap
+            X_set, y_set = self.shapeInputX(X), self.shapeInputy(y)
+            X1, X2 = np.meshgrid(np.arange(start=X_set[:, f1_index].min() - f1_margin, stop=X_set[:, f1_index].max() + f1_margin, step=f1_step),
+                                 np.arange(start=X_set[:, f2_index].min() - f2_margin, stop=X_set[:, f2_index].max() + f2_margin, step=f2_step))
+            plt.contourf(X1, X2, self.getFullPrediction(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape),
+                         alpha=0.75, cmap=ListedColormap(('red', 'green')))
+            plt.xlim(X1.min(), X1.max())
+            plt.ylim(X2.min(), X2.max())
+            for i, j in enumerate(np.unique(y_set)):
+                plt.scatter(X_set[y_set == j, 0], X_set[y_set == j, 1], c=ListedColormap(('red', 'green'))(i), label=j)
+            plt.title(title)
+            plt.xlabel(xlabel)
+            plt.ylabel(ylabel)
+            plt.legend()
+            plt.legend()
+
 
     def getR2(self):
         from sklearn.metrics import r2_score
