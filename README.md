@@ -6,7 +6,8 @@ an amalgamation of all my machine learning training and OO Python to demonstrate
 ## Importing dataset:
 * choose all cols but outputs for X, rest is y
 
-## Missing Data: _sklearn.impute.SimpleImputer_
+## Missing Data: 
+* _sklearn.impute.SimpleImputer_
 * avoid string cols
 * missing_values = _np.nan_
 * strategy = _'mean'_
