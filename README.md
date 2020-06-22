@@ -1,3 +1,7 @@
+# Object Oriented Machine Learning in Python
+an amalgamation of all my machine learning training and OO Python to demonstrate functionality
+
+
 # Data Preprocessing:
 ## Importing dataset:
 * choose all cols but outputs for X, rest is y
