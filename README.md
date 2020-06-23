@@ -282,18 +282,63 @@ __Accuracy ratio__ = check ratio of R/P at 50% sample size,
 * If near 90-100%, then likely over-fitting
 
 __ROC (Receiver Operating Characteristic)__ is not the same as CAP
+
+
 # Clustering
 
 ## K-means Clustering
+Intuition: how to identify clusters of features
+
+    Choose the number of clusters, K
+    Select any K random points (not necessarily from dataset) as the centroids
+    Assign each data point to the closest centroid (forms K clusters)
+    while(reassignment of cluster data):
+        Compute and place the new centroid of each cluster
+        Reassign data points if possible
+
+* __Caveat__: Do we use Euclidean Distance or something else
+* __Random Initialization Trap__: if we choose centroids poorly initially, the final clusters can be objectively incorrect
+    * Solution: K-means++
+* __wcss__: Within Cluster Sum of Squares, converges to 0 as numClusters -> numPoints, so we choose the optimal numClusters at the pivot point of the exponential relationship (elbow)
 
 ## Hierarchical Clustering
+Intuition: 
+    
+    assign each point as a cluster
+    while numClusters > 1:
+        combine closest clusters (Euclidean distance or otherwise)
+         (between centroids, closest or farthest points, avg dist)
+         
+__Dendrogram__: stores grouping memory, plotting the points as the values on the x-axis,
+           connecting various points at the computed dissimilarity between them (the height of the bar)
+* A threshold dissimilarity can be set to limit the minimum numClusters,
+           best split is at largest single height in chart (greatest dissimilarity)
+
+* __ward__: min variance method
 
 
 # Associative Rule Learning
+people who bought x also bought y
 
 ## Apriori
+* I sort these by lifts
+
+Intuition: 
+    
+    support(x) = #transactions containing x / #transactions
+    confidence(x -> x_2) = #transactions containing x and x_2 / #transactions containing x
+    lift(x->x_2) = confidence(x->x_2) / support(x), the improvement of the prediction
+
+Steps: 
+1. set a minimum support and confidence
+1. take all subsets of transactions that have valid support
+    1. and all the rules of these subsets with valid confidence 
+1. sort by decreasing lift
 
 ## Eclat
+simple apriori, determining sets of relations
+* only considering supports, sorted decreasingly (no confidences or lifts)
+* I sort these by supports
 
 
 # Reinforcement Learning
@@ -340,6 +385,7 @@ LDA differs from PCA by trying to maximize the separation between multiple class
 
 ## Kernel PCA
 Similar to PCA, but uses the kernels defined previously to assess correlations between features
+
 
 # Model Selection: Boosting
 

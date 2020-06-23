@@ -1,3 +1,4 @@
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -375,3 +376,106 @@ class DimReducer:
         from sklearn.decomposition import KernelPCA
         kpca = KernelPCA(n_components=self.n_components, kernel=self.kernel)
         return kpca
+
+class clusterModeller:
+    def __init__(self, filename,
+                 x_start=0,
+                 x_end=1,
+                 kmeans=True,
+                 init='k-means++',
+                 method='ward',
+                 metric='euclidean'):
+        dataset = pd.read_csv(filename)
+        self.X = dataset.iloc[:, [x_start, x_end]].values
+        self.y = None
+        self.kmeans = kmeans
+        self.clusterer = None
+        if self.kmeans:
+            self.init = init
+            self._wcss(self.init, maxclusters=10)
+        else:
+            self.method = method
+            self.metric = metric
+            self._dendrogram(method=self.method, metric=self.metric)
+
+    def _wcss(self, init='k-means++', maxclusters=10):
+        from sklearn.cluster import KMeans
+        wcss = []
+        for i in range(1, maxclusters+1):
+            kmeans = KMeans(n_clusters=i, init=init, random_state=42)
+            kmeans.fit(self.X)
+            wcss.append(kmeans.inertia_)
+        plt.plot(range(1, maxclusters+1), wcss)
+        plt.title('Elbow Method')
+        plt.xlabel('number of clusters')
+        plt.ylabel('WCSS')
+        plt.show()
+
+    def _dendrogram(self, method='ward', metric='euclidean', xlabel='units'):
+        import scipy.cluster.hierarchy as sch
+        dendrogram = sch.dendrogram(sch.linkage(self.X, method=method, metric=metric))
+        plt.title('Dendrogram')
+        plt.xlabel(xlabel)
+        plt.ylabel(metric + 'distances')
+        plt.show()
+
+    def kmean_model(self, n_clusters=3):
+        from sklearn.cluster import KMeans
+        kmeans = KMeans(n_clusters=n_clusters, init=self.init, random_state=42)
+        self.y = kmeans.fit_predict(self.X)
+        self.clusterer = kmeans
+
+    def hc_model(self, n_clusters=3):
+        from sklearn.cluster import AgglomerativeClustering
+        hc = AgglomerativeClustering(n_clusters=n_clusters, affinity=self.metric, linkage=self.method)
+        self.y = hc.fit_predict(self.X)
+        self.clusterer = hc
+
+    def plot(self, n_cluster=3, title='Clusters', xlabel='feature 1', ylabel='feature 2'):
+        from random import random
+        for i in range(n_cluster):
+            r, g, b = random.random(), random.random(), random.random()
+            color = (r, g, b)
+            plt.scatter(self.X[self.y == i, 0], self.X[self.y == i, 1], s=100, c=color, label='Cluster' + str(i + 1))
+        if self.kmeans:
+            plt.scatter(self.clusterer.cluster_centers_[:, 0], self.clusterer.cluster_centers_[:, 1], s=300, c='yellow',
+                        label='Centroids')
+        plt.title(title)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.legend()
+        plt.show()
+
+class AssociativeLearning:
+    def __init__(self, filename, apriori=True, support=0.003, conf=0.2, lift=3, minlen=2, maxdelta=0):
+        dataset = pd.read_csv(filename, header=0)
+        transactions = []
+        for i in range(0, len(dataset)):
+            transactions.append([str(dataset.values[i, j]) for j in range(0, len(dataset[0]))])
+
+        from apyori import apriori
+        rules = apriori(transactions, min_support=support, min_confidence=conf, min_lift=lift,
+                        min_length=minlen, max_length=minlen+maxdelta)
+        self.results = list(rules)
+        self.apriori = apriori
+        self.printResults()
+
+    def printResults(self, n_largest=10):
+        if self.apriori:
+            columns = ["LHS", "RHS", 'Support', 'Confidence', 'Lifts']
+        else:
+            columns = ["LHS", "RHS", 'Support']
+        resultsInDataFrame = pd.DataFrame(self._inspect(), columns=columns)
+        resultsInDataFrame.nlargest(n=n_largest, columns=columns[-1])
+        print(resultsInDataFrame)
+
+    def _inspect(self):
+        lhs = [tuple(result[2][0][0])[0] for result in self.results]
+        rhs = [tuple(result[2][0][1])[0] for result in self.results]
+        support = [result[1] for result in self.results]
+        if self.apriori:
+            confidence = [result[2][0][2] for result in self.results]
+            lifts = [result[2][0][3] for result in self.results]
+            return list(zip(lhs, rhs, support, confidence, lifts))
+        else:
+            return list(zip(lhs, rhs, support))
