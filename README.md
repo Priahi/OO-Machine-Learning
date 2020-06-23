@@ -344,8 +344,54 @@ simple apriori, determining sets of relations
 # Reinforcement Learning
 
 ## Upper Confidence Bound (UCB)
+Intuition: 
+
+    we have d devices to monitor, at each round n, where i gives reward r_i(n)E[0,1],
+    with r_i(n)=1 if user took action, and r_i(n) = 0 if not. We want to maximize
+     reward over many rounds
+
+* Deterministic, Requires update at every round
+* we have N rounds of data, but we want to
+ see how few rounds we need to validly identify the best device
+
+__N_i(n)__ : # times i was selected up to round n
+__R_i(n)__ : sum of rewards of i up to round n
+__r*_i(n)__ : avg rewards of i up to round n 
+    
+    = R_i(n) / N_i(n)
+__delta_i(n)__ 
+
+    = sqrt(3 log(n) / (2 N_i(n))
+confidence interval
+ 
+    [r*_i(n) - delta_i(n), r*_i(n) + delta_i(n)] (aka [LCB, UCB]), 
+    we select i with max UCB
 
 ## Thompson Sampling
+Same Intuition as UCB
+
+We are creating distribution of where the expected values lie 
+* probabilistic, not deterministic like UCB
+* Can accommodate delayed feedback
+
+__Bayesian Inference__: derives the posterior probability as a consequence of two antecedents:
+  * a prior probability
+  * a "likelihood function" derived from a statistical model for the observed data.
+  
+  Bayesian inference computes the posterior probability according to Bayes' theorem
+   Ad i get reward y from Bernoulli distribution
+    
+        p(y|theta_i) ~ B(theta_i)
+   theta_i is unknown, but we set its uncertainty assuming uniform distribution
+    
+        p(y|theta_i) ~ U([0,1])
+   Bayes Rule: approach theta_i by the posterior distribution: p(theta_i|y),
+   
+        p(theta_i|y) = ( p(y|theta_i) * p(theta_i) ) / ( integral(p(y|theta_i) * p(theta_i)) d theta_i )
+        p(theta_i|y) ~= ( p(y|theta_i) * p(theta_i) ), aka (likelihood function * prior distribution)
+        p(theta_i|y) ~ B(numSuccess + 1, numFail + 1),
+        at each round we take random theta_i(n) from p(theta_i|y), for each ad i
+        At each round n, select i with highest theta_i(n).
 
 
 # Natural Language Processing

@@ -300,6 +300,7 @@ class Regressor:
     #     regressor = XGBRegressor()
     #     return regressor
 
+
 class Classifier:
     def __init__(self):
         self.kernel = None
@@ -446,6 +447,7 @@ class clusterModeller:
         plt.legend()
         plt.show()
 
+
 class AssociativeLearning:
     def __init__(self, filename, apriori=True, support=0.003, conf=0.2, lift=3, minlen=2, maxdelta=0):
         dataset = pd.read_csv(filename, header=0)
@@ -479,3 +481,69 @@ class AssociativeLearning:
             return list(zip(lhs, rhs, support, confidence, lifts))
         else:
             return list(zip(lhs, rhs, support))
+
+
+class Reinforcement:
+    def __init__(self, filename, ucb=True, N=1000, numChoices=10,
+                 xlabel='feature1', ylabel='feature2'):
+        self.dataset = pd.read_csv(filename)
+        self.N = N
+        self.d = numChoices
+        self.ads_selected = []
+        self.total_reward = 0
+        if ucb:
+            self.num_selections = [0] * self.d
+            self.sum_rewards = [0] * self.d
+            self._ucb()
+        else:
+            self.numbers_of_rewards_1 = [0] * self.d  # successes
+            self.numbers_of_rewards_0 = [0] * self.d  # fails
+            self._thompson()
+        self._plotHistogram(xlabel=xlabel, ylabel=ylabel)
+
+    def _ucb(self):
+        import math
+        for n in range(0, self.N):
+            ad = 0
+            max_upper_bound = 0
+            for i in range(0, self.d):
+                if self.num_selections[i]:
+                    avg_reward = self.sum_rewards[i] / self.num_selections[i]
+                    delta_i = math.sqrt(1.5 * math.log(n + 1) / self.num_selections[i])
+                    ucb = avg_reward + delta_i
+                else:
+                    ucb = 1e400
+
+                if ucb > max_upper_bound:
+                    max_upper_bound = ucb
+                    ad = i
+            self.ads_selected.append(ad)
+            self.num_selections[ad] += 1
+            reward = self.dataset.values[n, ad]
+            self.sum_rewards[ad] += reward
+            self.total_reward += reward
+
+    def _thompson(self):
+        import random
+        for n in range(0, self.N):
+            ad = 0
+            max_random = 0
+            for i in range(0, self.d):
+                random_beta = random.betavariate(self.numbers_of_rewards_1[i] + 1, self.numbers_of_rewards_0[i] + 1)
+                if random_beta > max_random:
+                    max_random = random_beta
+                    ad = i
+            self.ads_selected.append(ad)
+            reward = self.dataset.values[n, ad]
+            if reward:
+                self.numbers_of_rewards_1[ad] += 1
+            else:
+                self.numbers_of_rewards_0[ad] += 1
+            self.total_reward += reward
+
+    def _plotHistogram(self, xlabel='feature1', ylabel='feature2'):
+        plt.hist(self.ads_selected)
+        plt.title('Histogram')
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.show()
