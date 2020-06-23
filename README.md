@@ -395,7 +395,18 @@ __Bayesian Inference__: derives the posterior probability as a consequence of tw
 
 
 # Natural Language Processing
+__Bag of Words Model__:  tokenization
+* preprocess text before classification
+ * involving vocab of know words
+ * measure of the presence of known words
+ 
+ __stopwords__: words that dont add meaning, like the, I, etc.
+ 
+ __quoting__: =3 to ignore quotes
+ 
+__PorterStemmer__: only consider the stem of the word, replace punctuation with spaces
 
+__max_features__:  how many words to include, thus letting us remove unnecessary words like names
 
 # Deep Learning
 

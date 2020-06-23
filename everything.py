@@ -547,3 +547,63 @@ class Reinforcement:
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         plt.show()
+
+
+class NaturalLanguageProcessing:
+    def __init__(self, tsv, max_words=1000):
+        self.dataset = pd.read_csv(tsv, delimiter='\t', quoting=3)
+        self.corpus = None
+        self.X = None
+        self.y = None
+        self.y_test = None
+        self.y_pred = None
+        import nltk
+        nltk.download('stopwords')
+        self._fillCorpus()
+        self._bagOfWords(max=max_words)
+        self._splitAndFit()
+        
+    def _fillCorpus(self):
+        import re
+        from nltk.corpus import stopwords
+        from nltk.stem.porter import PorterStemmer
+        self.corpus = []
+        for i in range(0, 1000):
+            review = re.sub('[^a-zA-Z]', ' ', self.dataset['Review'][i])  # replace punctuation with spaces
+            review = review.lower()  # make it lower case
+            review = review.split()  # split into separate words
+            ps = PorterStemmer()
+            all_stopwords = stopwords.words('english')
+            all_stopwords.remove('not')
+            review = [ps.stem(word) for word in review if not word in set(all_stopwords)]  # removing root of word
+            #  to combine i.e. like and liked if not in stopwords, removing those
+            review = ' '.join(review)  # join words with spaces in between
+            self.corpus.append(review)
+
+    def _bagOfWords(self, max=1000):
+        from sklearn.feature_extraction.text import CountVectorizer
+        cv = CountVectorizer(max_features=max)
+        self.X = cv.fit_transform(self.corpus).toarray()
+        self.y = self.dataset.iloc[:, -1].values
+
+    def _splitAndFit(self):
+        from sklearn.model_selection import train_test_split
+        X_train, X_test, y_train, self.y_test = train_test_split(self.X, self.y, test_size=1/3, random_state=0)
+
+        cls = Classifier()
+        classifier = cls.getClassifier(classifier='bayes')
+        classifier.fit(X_train, y_train)
+        self.y_pred = classifier.predict(X_test)
+
+    def confusionMatrix(self):
+        from sklearn.metrics import confusion_matrix, accuracy_score
+        cm = confusion_matrix(self.y_test, self.y_pred)
+        # print(cm)  # [[#neg , #falsePos],[#falseneg, #Pos]]
+        acc = accuracy_score(self.y_test, self.y_pred)
+        # print(acc)
+        return cm, acc
+
+    def printComparedOutputs(self):
+        print(np.concatenate((self.y_pred.reshape(len(self.y_pred), 1),
+                              self.y_test.reshape(len(self.y_test), 1)), 1))
+        print(np.concatenate((self.y_pred, self.y_test)))
