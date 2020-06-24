@@ -408,11 +408,133 @@ __PorterStemmer__: only consider the stem of the word, replace punctuation with 
 
 __max_features__:  how many words to include, thus letting us remove unnecessary words like names
 
+
 # Deep Learning
 
 ## Artificial Neural Networks (ANN)
+__activation functions__: sigmoid (used in output layer), rectifer(used in hidden layers), tanh, threshold.
 
+__cost function__: measuring error between y (real) and y^ (predicted) = 
+
+    .5(y^-y)^2
+__batch gradient descent__ |__stochastic gradient descent__
+---------------|------------------ 
+deterministic | random
+looks at weights after all data runs | updates the weights dynamically
+| | stochastic gradient descent avoids local minimums and finds global minimums, is faster
+__back-propagation__: adjusting all weights compared to the error matrix simultaneously for max speed
+
+Example code with comments:
+````python
+classifier = Sequential()
+
+# Adding the input layer and the first hidden layer
+classifier.add(Dense(6, activation='relu', input_dim=11, kernel_initializer='uniform'))  # rectifier activation func, input dim seems unnecessary
+
+# Adding the second hidden layer
+classifier.add(Dense(6, activation='relu', kernel_initializer='uniform'))  # uniform weight dist around 0
+
+# Adding the output layer
+classifier.add(Dense(1, activation='sigmoid', kernel_initializer='uniform'))  # sigmoid for output probability
+# classifier.add(Dense(n, activation='softmax', kernel_initializer='uniform'))  # softmax for nD dependant output probability
+
+# Compiling the ANN    
+classifier.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+# adam is a good stochastic gradient descent function, avoiding local min
+# loss function is log loss func to account for sigmoid loss
+# metrics uses accuracy criterion to improve model performance
+
+# Part 3 - Training the ANN
+# Training the ANN on the Training set
+classifier.fit(X_train, y_train, batch_size=32, # batch_size operations before updating weights
+                                    epochs=100) # epoch num of these
+````   
 ## Convolutional Neural Networks (CNN)
+__Intuition__: 
+    
+    Convolution -> Max Pooling -> Flattening -> Full Connection
+__Convolution__: signal processing func we learned in Math 256, integral of two
+              functions to get laplace easier. (f*g)(t)
+              We use a standard stride of 2 pixels to analyze image
+              Feature detector (3x3) maps input image(nxn) to a feature
+              map ((n-3+1)^2) and reduces noise, feature map lists
+              number of matching points on image section compared
+              to feature detector. Many maps for detecting all
+              features -- goes into convolution layer
+              
+__ReLU Layer__: rectifier linear operation allows the isolation of all 1s
+              from zeros, hence focusing only on the nonlinear, positive
+              portions of the image, reducing noise.
+              
+__Max Pooling__: AKA _Down Sampling_,
+              How to understand features facing different directions, or
+              existing in different parts of image (tilts, offsets, etc).
+              we use a stride of two to get the max values from the
+              feature map into a Pooled Feature Map, accounting for any
+              distortions since we pull only the max features.
+              (ok to go over image size limits)
+              This reduces input info and over-fitting because of it
+         sub-sampling: mean pooling instead of max pooling
+         
+__Flattening__: Converting pooled feature map into a flat column, acts as input
+              layer of ANN
+              
+__Full Connection__: layers of the ANN which are fully connected (O(n^2) connections)
+              multiple output neurons possible, thus we have NN of features
+              matched to output at output layer (due to output weights),
+              redundant and irrelevant auto-removed by NN backtracking of errors
+              
+__SoftMax__: normalized exponential function: kD vector -> E[0,1] for each output type,
+          all probs add to 1 overall,
+           
+     f_j(z) = e^(z_j) / (sum_k(e^z_k))
+            
+__Cross-Entropy__: similar to reducing error (like mean-squared) but is better with
+              small initial gradient descent errors due to log term
+              
+* __Loss Func__: 
+
+        L_i = -log(e^(f_yi) / (sum_j(e^f_j)))) (minimize these)
+* __Cost Func__: 
+        
+        H(p,q) = - Sum_x( (p(x))*log(q(x)) ) (p=actual val, q=predicted val)
+        
+Example Code with comments:
+````python
+# Initialising the CNN
+cnn = tf.keras.models.Sequential()
+
+# Step 1 - Convolution
+cnn.add(tf.keras.layers.Conv2D(filters=32,  # the dimensionality of the output space
+                               kernel_size=3,  # height and width of the 2D convolution window.
+                               activation='relu',
+                               padding='same',  # for convolution layer
+                               input_shape=[64, 64, 3]))  # (batch_size, channels, rows, cols) 4d tensor
+# Step 2 - Pooling
+cnn.add(tf.keras.layers.MaxPool2D(pool_size=(2, 2),  # max value over a 2x2 pooling window
+                                  strides=2,  # 2 pixel stride
+                                  padding='valid'))  # for pooling
+# Adding a second convolutional layer
+cnn.add(tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same', activation='relu'))
+cnn.add(tf.keras.layers.MaxPool2D(pool_size=(2, 2), strides=2, padding='valid'))
+
+# Step 3 - Flattening
+cnn.add(tf.keras.layers.Flatten())
+
+# Step 4 - Full Connection
+cnn.add(tf.keras.layers.Dense(units=128, activation='relu', kernel_initializer='uniform'))
+
+# Step 5 - Output Layer
+cnn.add(tf.keras.layers.Dense(units=1, activation='sigmoid', kernel_initializer='uniform'))
+
+# Part 3 - Training the CNN
+
+# Compiling the CNN
+cnn.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Training the CNN on the Training set and evaluating it on the Test set
+cnn.fit(x=training_set, validation_data=test_set, epochs=25)
+````
 
 ## Recurrent Neural Networks (RNN)
 
